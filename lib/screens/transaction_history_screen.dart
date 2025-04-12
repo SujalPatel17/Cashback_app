@@ -107,13 +107,63 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                     child: ListTile(
                       title: Text(txn.category),
                       subtitle: Text(DateFormat.yMMMd().format(txn.date)),
-                      trailing: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(formatter.format(txn.amount)),
-                          Text(
-                            "Cashback: ₹${txn.cashback.toStringAsFixed(2)}",
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(formatter.format(txn.amount)),
+                              Text(
+                                "Cashback: ₹${txn.cashback.toStringAsFixed(2)}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder:
+                                    (ctx) => AlertDialog(
+                                      title: const Text("Delete Transaction"),
+                                      content: const Text(
+                                        "Are you sure you want to delete this transaction?",
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed:
+                                              () => Navigator.of(ctx).pop(),
+                                          child: const Text("Cancel"),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            Navigator.of(ctx).pop();
+                                            await DBHelper().deleteTransaction(
+                                              txn.id!,
+                                            );
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Transaction deleted",
+                                                ),
+                                              ),
+                                            );
+                                            _loadTransactions(); // Refresh list
+                                          },
+                                          child: const Text("Delete"),
+                                        ),
+                                      ],
+                                    ),
+                              );
+                            },
                           ),
                         ],
                       ),

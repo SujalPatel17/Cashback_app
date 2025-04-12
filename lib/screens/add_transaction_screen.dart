@@ -75,12 +75,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         cashback: _finalCashback,
       );
 
-      await DBHelper().insertTransaction(txn);
+      // Insert transaction and get the inserted ID
+      final insertedId = await DBHelper().insertTransaction(txn);
 
       // Schedule the 90-day reminder notification
       final notificationDate = txn.date.add(const Duration(days: 90));
       await NotificationService().scheduleNotification(
-        txn.id!,
+        insertedId,
         'Cashback Reminder',
         'Check your cashback for the transaction on ${DateFormat.yMMMd().format(txn.date)}.',
         notificationDate,

@@ -88,65 +88,72 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Analytics")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Analytics',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Analytics',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  DropdownButton<String>(
+                    value: _selectedFilter,
+                    items:
+                        _filters.map((filter) {
+                          return DropdownMenuItem<String>(
+                            value: filter,
+                            child: Text(filter),
+                          );
+                        }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _selectedFilter = value;
+                        });
+                        _loadTransactions();
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Total Cashback: ₹${_totalCashback.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
-                DropdownButton<String>(
-                  value: _selectedFilter,
-                  items:
-                      _filters.map((filter) {
-                        return DropdownMenuItem<String>(
-                          value: filter,
-                          child: Text(filter),
-                        );
-                      }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedFilter = value;
-                      });
-                      _loadTransactions();
-                    }
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Total Cashback: ₹${_totalCashback.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            // Display capped cashback
-            Text(
-              'Capped Cashback: ₹${_cappedCashback.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Spending by Category:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            _buildSpendingChart(),
-            const SizedBox(height: 30),
-            const Text(
-              'Cashback Progress:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            _buildCashbackProgressChart(),
-          ],
+              ),
+              const SizedBox(height: 16),
+              // Display capped cashback
+              Text(
+                'Capped Cashback: ₹${_cappedCashback.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Spending by Category:',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 280, // or any height that fits your design
+                child: _buildSpendingChart(),
+              ),
+              const SizedBox(height: 40),
+              const Text(
+                'Cashback Progress:',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 30), // add this line
+              SizedBox(height: 200, child: _buildCashbackProgressChart()),
+            ],
+          ),
         ),
       ),
     );
@@ -154,9 +161,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Widget _buildSpendingChart() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      ); // Show loading indicator while data is being fetched
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_spendingCategories.isEmpty) {
@@ -168,34 +173,71 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       );
     }
 
-    return PieChart(
-      PieChartData(
-        sections:
-            _spendingCategories.entries.map((entry) {
-              final category = entry.key;
-              final amount = entry.value;
-              return PieChartSectionData(
-                value: amount,
-                title: category,
-                color:
-                    Colors.primaries[_spendingCategories.keys.toList().indexOf(
-                          category,
+    final List<Color> colors = Colors.primaries;
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 200,
+          child: PieChart(
+            PieChartData(
+              sections:
+                  _spendingCategories.entries.map((entry) {
+                    final category = entry.key;
+                    final amount = entry.value;
+                    final color =
+                        colors[_spendingCategories.keys.toList().indexOf(
+                              category,
+                            ) %
+                            colors.length];
+                    return PieChartSectionData(
+                      value: amount,
+                      title: '', // no title inside the chart
+                      color: color,
+                      radius: 60,
+                    );
+                  }).toList(),
+              borderData: FlBorderData(show: false),
+              sectionsSpace: 2,
+              centerSpaceRadius: 40, // creates donut chart
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children:
+              _spendingCategories.entries.map((entry) {
+                final color =
+                    colors[_spendingCategories.keys.toList().indexOf(
+                          entry.key,
                         ) %
-                        Colors.primaries.length],
-                radius: 50,
-              );
-            }).toList(),
-        borderData: FlBorderData(show: false),
-        sectionsSpace: 0,
-      ),
+                        colors.length];
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(entry.key, style: const TextStyle(fontSize: 14)),
+                  ],
+                );
+              }).toList(),
+        ),
+      ],
     );
   }
 
   Widget _buildCashbackProgressChart() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      ); // Show loading indicator while data is being fetched
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_transactions.isEmpty) {
@@ -207,9 +249,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       );
     }
 
+    // Use abbreviated month names
     final monthNames = List.generate(
       12,
-      (index) => DateFormat.MMMM().format(DateTime(2023, index + 1)),
+      (index) => DateFormat.MMM().format(DateTime(2023, index + 1)),
     );
 
     final cashbackData = List.generate(
@@ -227,30 +270,45 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (value, meta) {
-                return Text('₹${value.toStringAsFixed(0)}');
+                return Text(
+                  '₹${value.toStringAsFixed(0)}',
+                  style: const TextStyle(fontSize: 10),
+                );
               },
+              reservedSize: 30,
             ),
           ),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (value, meta) {
-                return Text(monthNames[value.toInt()]);
+                if (value.toInt() < 0 || value.toInt() >= monthNames.length) {
+                  return const SizedBox.shrink();
+                }
+                return Transform.rotate(
+                  angle: -0.5,
+                  child: Text(
+                    monthNames[value.toInt()],
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                );
               },
             ),
           ),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         borderData: FlBorderData(show: false),
         barGroups: List.generate(12, (index) {
           return BarChartGroupData(
             x: index,
-            barsSpace: 4,
+            barsSpace: 6, // Adjust spacing here
             barRods: [
               BarChartRodData(
                 toY: cashbackData[index],
                 color: Colors.blue,
-                width: 16,
-                borderRadius: BorderRadius.circular(8),
+                width: 14,
+                borderRadius: BorderRadius.circular(6),
               ),
             ],
           );

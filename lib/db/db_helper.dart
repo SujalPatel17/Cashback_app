@@ -177,4 +177,9 @@ class DBHelper {
         ? (result.first['total'] as num).toDouble()
         : 0.0;
   }
+
+  Future<int> deleteTransaction(int id) async {
+    final db = await database;
+    return await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+  }
 }

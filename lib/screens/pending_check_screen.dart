@@ -19,25 +19,22 @@ class _PendingCheckScreenState extends State<PendingCheckScreen> {
     _loadPendingTransactions();
   }
 
-  // Load transactions that are 90 days old and not checked for cashback yet
   Future<void> _loadPendingTransactions() async {
     final pendingTransactions = await DBHelper().getPendingCashbackChecks();
-
     setState(() {
       _pendingTransactions = pendingTransactions;
     });
   }
 
-  // Mark transaction as checked for cashback
   Future<void> _markAsChecked(TransactionModel txn) async {
     await DBHelper().markCashbackChecked(txn.id!);
-    _loadPendingTransactions(); // Reload the pending transactions
+    _loadPendingTransactions();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pending Cashback Check')),
+      appBar: AppBar(title: const Text('Pending Cashback Checks')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child:
@@ -49,17 +46,48 @@ class _PendingCheckScreenState extends State<PendingCheckScreen> {
                     final txn = _pendingTransactions[index];
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: ListTile(
-                        title: Text(txn.category),
-                        subtitle: Text(
-                          'Amount: ₹${txn.amount.toStringAsFixed(2)}\n'
-                          'Date: ${DateFormat.yMd().format(txn.date)}',
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.check_circle),
-                          onPressed: () {
-                            _markAsChecked(txn);
-                          },
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    txn.category,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '₹${txn.amount.toStringAsFixed(2)} on ${DateFormat.yMMMd().format(txn.date)}',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal.shade50,
+                                foregroundColor: Colors.teal.shade800,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24.0),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16.0,
+                                  vertical: 8.0,
+                                ),
+                                elevation: 0,
+                              ),
+                              onPressed: () {
+                                _markAsChecked(txn);
+                              },
+                              child: const Text('Mark as Checked'),
+                            ),
+                          ],
                         ),
                       ),
                     );

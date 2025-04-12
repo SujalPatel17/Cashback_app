@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../db/db_helper.dart';
 import '../models/transaction_model.dart';
@@ -13,7 +15,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   double _totalSpent = 0;
   double _totalCashback = 0;
-  List<TransactionModel> _pendingCashbacks = [];
   bool _isLoading = true;
   double _maxCashback = 400.0;
 
@@ -21,11 +22,33 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadDashboardData();
+    _checkAndRequestPermission();
+  }
+
+  Future<void> _checkAndRequestPermission() async {
+    // Get SharedPreferences instance
+    final prefs = await SharedPreferences.getInstance();
+    // Check if the notification permission has been requested before
+    bool isPermissionRequested =
+        prefs.getBool('isPermissionRequested') ?? false;
+
+    if (!isPermissionRequested) {
+      // Request permission
+      final status = await Permission.notification.request();
+
+      if (status.isGranted) {
+        // Store that permission has been requested
+        await prefs.setBool('isPermissionRequested', true);
+      } else {
+        // Handle the case when permission is denied
+        print("Permission not granted");
+      }
+    }
   }
 
   Future<void> _loadDashboardData() async {
     setState(() {
-      _isLoading = true; // Show loading indicator while fetching data
+      _isLoading = true;
     });
 
     final transactions = await DBHelper().getAllTransactions();
@@ -38,22 +61,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     for (var txn in transactions) {
       if (txn.date.isAfter(currentMonthStart) &&
-          txn.date.isBefore(currentMonthEnd.add(Duration(days: 1)))) {
+          txn.date.isBefore(currentMonthEnd.add(const Duration(days: 1)))) {
         totalSpent += txn.amount;
         totalCashback += txn.cashback;
       }
     }
 
-    final pending = await DBHelper().getPendingCashbackChecks();
-
-    // Calculate the remaining cashback for the month
-    double remainingCashback = _maxCashback - totalCashback;
-
     setState(() {
       _totalSpent = totalSpent;
       _totalCashback = totalCashback;
-      _pendingCashbacks = pending;
-      _isLoading = false; // Hide loading indicator once data is fetched
+      _isLoading = false;
     });
   }
 
@@ -65,9 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(title: const Text("Cashback Dashboard")),
       body:
           _isLoading
-              ? const Center(
-                child: CircularProgressIndicator(),
-              ) // Show loading spinner while data is loading
+              ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
                 onRefresh: _loadDashboardData,
                 child: ListView(
@@ -95,7 +110,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // Cashback progress card
                     Card(
                       elevation: 3,
                       shape: RoundedRectangleBorder(
@@ -116,40 +130,22 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    Text(
-                      "Pending Cashback Checks",
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    if (_pendingCashbacks.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Text("🎉 No pending cashback checks"),
-                      )
-                    else
-                      ..._pendingCashbacks.map(
-                        (txn) => Card(
-                          child: ListTile(
-                            title: Text(txn.category),
-                            subtitle: Text(
-                              "₹${txn.amount} on ${DateFormat.yMMMd().format(txn.date)}",
-                            ),
-                            trailing: ElevatedButton(
-                              onPressed: () async {
-                                await DBHelper().markCashbackChecked(txn.id!);
-                                _loadDashboardData(); // Reload dashboard data after marking as checked
-                              },
-                              child: const Text("Mark as Checked"),
-                            ),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.pushNamed(context, '/add');
+        onPressed: () async {
+          final result = await Navigator.pushNamed(context, '/add');
+          if (result == true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Transaction added successfully!'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            _loadDashboardData(); // Refresh data after new transaction
+          }
         },
         icon: const Icon(Icons.add),
         label: const Text("Add Transaction"),

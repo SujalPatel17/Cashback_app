@@ -75,23 +75,36 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         cashback: _finalCashback,
       );
 
-      // Insert transaction and get the inserted ID
+      // Step 1: Insert the transaction into the database
       final insertedId = await DBHelper().insertTransaction(txn);
 
-      // Schedule the 90-day reminder notification
-      final notificationDate = txn.date.add(const Duration(days: 90));
-      await NotificationService().scheduleNotification(
-        insertedId,
-        'Cashback Reminder',
-        'Check your cashback for the transaction on ${DateFormat.yMMMd().format(txn.date)}.',
-        notificationDate,
-      );
+      // Step 2: Initialize the notification service
+      final notificationService = NotificationService();
+      final scheduledDate = txn.date.add(
+        Duration(days: 90),
+      ); // Notification set for 90 days later
 
+      // Step 3: Check if the scheduled date is in the future before scheduling
+      if (scheduledDate.isAfter(DateTime.now())) {
+        await notificationService.scheduleNotification(
+          insertedId, // Using the inserted transaction ID
+          'Cashback Reminder',
+          'Check your cashback for the transaction on ${DateFormat.yMMMd().format(txn.date)}.',
+          scheduledDate, // 90 days after the transaction date
+        );
+      } else {
+        print("Scheduled date must be in the future.");
+      }
+
+      // Step 4: Show "Transaction Added" message using SnackBar
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Transaction saved and reminder set')),
+        const SnackBar(
+          content: Text("Transaction Added! Cashback reminder scheduled."),
+        ),
       );
 
-      Navigator.pop(context); // Go back to dashboard
+      // Step 5: Close screen after saving the transaction and scheduling the notification
+      Navigator.pop(context, true);
     }
   }
 
